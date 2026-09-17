@@ -1,0 +1,23 @@
+/*
+ * Copyright (c) 2026 Simon Peter
+ *
+ * SPDX-License-Identifier: BSD-2-Clause
+ */
+
+{
+    GSThemeName = "Kaleidoscope";
+    GSThemeDescription = "Classic Mac OS schemes, loaded from Mac Themes Garden";
+    GSThemeDetails = "Draws the interface out of a Kaleidoscope colour scheme. The theme ships no artwork of its own: pick a scheme in the Kaleidoscope preference pane and every running application follows.";
+    GSThemeAuthors = (
+        "Simon Peter"
+    );
+    GSThemeDomain = {
+        NSScrollViewInterfaceStyle = NSMacintoshInterfaceStyle;
+        NSScrollerInterfaceStyle = NSMacintoshInterfaceStyle;
+        NSMenuInterfaceStyle = NSMacintoshInterfaceStyle;
+    };
+    GSThemeLicense = "BSD-2-Clause";
+    GSThemeTiles = {
+    };
+    GSThemeVersion = "1";
+}

@@ -1,0 +1,15 @@
+/*
+ * Copyright (c) 2026 Simon Peter
+ *
+ * SPDX-License-Identifier: BSD-2-Clause
+ */
+
+{
+    NSPrincipalClass = "KaleidoscopePrefPane";
+    NSPrefPaneIconLabel = "Kaleidoscope";
+    NSPrefPaneIconFile = "Kaleidoscope.png";
+    CFBundleIdentifier = "io.github.gershwin-desktop.Kaleidoscope.prefpane";
+    CFBundleName = "Kaleidoscope";
+    CFBundleShortVersionString = "1";
+    NSHumanReadableCopyright = "Copyright (c) 2026 Simon Peter";
+}

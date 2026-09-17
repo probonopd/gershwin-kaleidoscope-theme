@@ -1,0 +1,25 @@
+# Copyright (c) 2026 Simon Peter
+#
+# SPDX-License-Identifier: BSD-2-Clause
+
+# Each test tool compiles in the sources it exercises rather than linking
+# libKaleidoscopeScheme: a test binary is not loaded alongside the theme, so
+# there is no duplicate-class hazard here, and linking the shared library into
+# a tool that also pulls in gnustep-gui runs into a libobjc2 constant-string
+# section problem at link time.
+ADDITIONAL_INCLUDE_DIRS += -I..
+
+t_KResourceFork_OBJC_FILES += ../KResourceFork.m
+
+t_KIconDecoder_OBJC_FILES += ../KIconDecoder.m
+t_KIconDecoder_TOOL_LIBS += -lgnustep-gui
+
+t_KScheme_OBJC_FILES += ../KScheme.m ../KResourceFork.m ../KIconDecoder.m
+t_KScheme_TOOL_LIBS += -lgnustep-gui
+
+t_KSchemeStore_OBJC_FILES += ../KSchemeStore.m ../KScheme.m \
+                             ../KResourceFork.m ../KIconDecoder.m
+t_KSchemeStore_TOOL_LIBS += -lgnustep-gui
+
+t_KGarden_OBJC_FILES += ../KGarden.m
+t_KGarden_TOOL_LIBS += -lgnustep-gui
