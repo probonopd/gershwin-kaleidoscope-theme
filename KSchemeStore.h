@@ -44,6 +44,17 @@ extern NSString * const KSchemeLibraryDidChangeNotification;
 - (NSArray *)installSchemesFromArchive:(NSString *)archivePath
                                  error:(NSError **)error;
 
+/* Which of fileNames is the scheme a Mac Themes Garden entry called title.
+ *
+ * The Garden lists every scheme of a set as an entry of its own - Mars, Venus,
+ * Saturn - and each of them downloads the same archive holding the whole set,
+ * so the entry clicked, not the archive, says which scheme was wanted. A lone
+ * file name is the answer whatever it is called. Otherwise the answer is the
+ * one file name whose words contain the title's words in order; nil when no
+ * file name or more than one does, since picking one would be a guess. */
+- (NSString *)fileNameForSchemeTitled:(NSString *)title
+                        amongFileNames:(NSArray *)fileNames;
+
 - (BOOL)removeSchemeWithFileName:(NSString *)fileName error:(NSError **)error;
 
 /* The chosen scheme's file name, or nil when none is chosen yet. */

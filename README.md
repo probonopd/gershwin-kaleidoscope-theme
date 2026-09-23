@@ -117,7 +117,7 @@ cd Tests && gmake
 for t in ./obj/t_*; do "$t"; done
 ```
 
-153 assertions, all headless and offline. The fixtures build resource forks,
+159 assertions, all headless and offline. The fixtures build resource forks,
 colour icons and icon family members **byte by byte in the test**: no scheme is
 bundled, because they belong to their authors and a test that needs one cannot
 run on a fresh checkout.
@@ -154,9 +154,10 @@ Preferences cannot do while another copy of it is running.
 - The theme uses 92 parts; a rich scheme ships three to four times as many, and
   the sliders, tabs and small scroll bars in the table are not wired up yet.
 - The accent tables are read but unused.
-- `Tools/panehost` raises an empty GNUstep alert when it loads this pane, which
-  Eau happens to suppress and this theme does not. Undiagnosed; it affects the
-  developer tool, not the pane in System Preferences.
+- Some schemes on the Garden are packaged as Installer VISE applications rather
+  than as StuffIt archives of the scheme file. Their payload is in MindVision's
+  own compressed format, which `unar` cannot open, so they cannot be installed;
+  the pane says so instead of reporting an empty download.
 
 ## Credit and licensing
 

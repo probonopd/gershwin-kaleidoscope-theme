@@ -344,6 +344,7 @@
   NSError *error = nil;
   NSString *archive;
   NSArray *added;
+  NSString *chosen;
   KScheme *scheme;
 
   if (_busy)
@@ -412,10 +413,20 @@
       return;
     }
 
-  /* An archive can hold several schemes; the first one is the one used, and
-   * the rest stay in the library. */
-  [[KSchemeStore sharedStore]
-    selectSchemeWithFileName: [added objectAtIndex: 0]];
+  /* An archive can hold a whole set of schemes, each listed on the Garden as
+   * an entry of its own; the one to use is the one whose entry was clicked,
+   * and the rest stay in the library. */
+  chosen = [[KSchemeStore sharedStore] fileNameForSchemeTitled: [theme title]
+                                                 amongFileNames: added];
+  if (chosen == nil)
+    {
+      [self setStatus: [NSString stringWithFormat:
+        @"%@ downloaded %lu schemes, but none of them is named after it, so"
+        @" the current scheme is kept.", [theme title],
+        (unsigned long)[added count]]];
+      return;
+    }
+  [[KSchemeStore sharedStore] selectSchemeWithFileName: chosen];
   scheme = [[KSchemeStore sharedStore] selectedScheme];
   if (scheme == nil)
     {
@@ -423,8 +434,10 @@
         @"%@ downloaded, but its scheme could not be read.", [theme title]]];
       return;
     }
+  /* The entry's title rather than the scheme's own name: every scheme of a
+   * set carries the set's name, which would not say which one is in use. */
   [self setStatus: [NSString stringWithFormat: @"Now using %@.%@",
-    [scheme name],
+    [theme title],
     [added count] > 1
       ? [NSString stringWithFormat: @" %lu more schemes from this download are"
          @" in your library.", (unsigned long)[added count] - 1]

@@ -11,6 +11,7 @@
 #import "Testing.h"
 #import "KSchemeStore.h"
 #import "KScheme.h"
+#import "KTestFixtures.h"
 
 int main(void)
 {
@@ -90,6 +91,76 @@ int main(void)
     PASS_RUNS([store installSchemesFromArchive: notAnArchive error: NULL],
               "a caller that does not want the error is not required to take one");
     [fm removeItemAtPath: notAnArchive error: NULL];
+  }
+
+  /* --- archives that hold an installer instead of a scheme --- */
+  {
+    NSData *code = KMakeFork(@{ @"CODE": @{ @0: [@"installer"
+      dataUsingEncoding: NSASCIIStringEncoding] } });
+    NSString *archive = [NSTemporaryDirectory()
+      stringByAppendingPathComponent:
+        [NSString stringWithFormat: @"k-installer-%d.bin", (int)getpid()]];
+    NSArray *before = [store installedSchemeFileNames];
+    NSError *error = nil;
+
+    [KMakeMacBinary(code, "Scheme Installer", "APPL", "VIS3")
+      writeToFile: archive atomically: YES];
+    PASS([store installSchemesFromArchive: archive error: &error] == nil
+         && [error code] == 7
+         && [[error localizedDescription] rangeOfString: @"Installer VISE"]
+              .location != NSNotFound,
+         "an Installer VISE package is named as such, not reported as empty");
+    PASS_EQUAL([store installedSchemeFileNames], before,
+               "and nothing is added to the library");
+
+    [KMakeMacBinary(code, "Scheme Installer", "APPL", "SIT!")
+      writeToFile: archive atomically: YES];
+    error = nil;
+    PASS([store installSchemesFromArchive: archive error: &error] == nil
+         && [error code] == 7
+         && [[error localizedDescription] rangeOfString: @"Installer VISE"]
+              .location == NSNotFound,
+         "any other installer application is reported as an installer");
+
+    [KMakeMacBinary(code, "Read Me", "TEXT", "ttxt")
+      writeToFile: archive atomically: YES];
+    error = nil;
+    PASS([store installSchemesFromArchive: archive error: &error] == nil
+         && [error code] == 5,
+         "an archive with neither a scheme nor an installer holds no scheme");
+    [fm removeItemAtPath: archive error: NULL];
+  }
+
+  /* --- a set downloaded from one entry uses that entry's scheme --- */
+  {
+    NSArray *planets = @[@"Planets - Mars.rsrc", @"Planets - Venus.rsrc",
+                         @"Planets - Saturn.rsrc"];
+    NSArray *moons = @[@" BeMoon.rsrc", @" Moon.rsrc"];
+
+    PASS_EQUAL([store fileNameForSchemeTitled: @"Venus"
+                               amongFileNames: planets],
+               @"Planets - Venus.rsrc",
+               "the entry clicked picks its scheme out of the set, not the"
+               " first one unpacked");
+    PASS_EQUAL([store fileNameForSchemeTitled: @"saturn"
+                               amongFileNames: planets],
+               @"Planets - Saturn.rsrc", "case does not matter");
+    PASS_EQUAL([store fileNameForSchemeTitled: @"Moon"
+                               amongFileNames: moons],
+               @" Moon.rsrc",
+               "a title matches whole words, so Moon is not BeMoon");
+    PASS_EQUAL([store fileNameForSchemeTitled: @"Sleek Grey"
+                               amongFileNames: @[@"Sleek Gray 1.0.rsrc"]],
+               @"Sleek Gray 1.0.rsrc",
+               "a lone scheme is the answer whatever its file is called");
+    PASS([store fileNameForSchemeTitled: @"Pluto"
+                         amongFileNames: planets] == nil,
+         "a title that names none of the set gives nil rather than a guess");
+    PASS([store fileNameForSchemeTitled: @"Planets"
+                         amongFileNames: planets] == nil,
+         "and so does one that names all of them");
+    PASS([store fileNameForSchemeTitled: @"Mars" amongFileNames: @[]] == nil,
+         "an empty set has no answer");
   }
 
   /* --- the installed library reads back consistently --- */

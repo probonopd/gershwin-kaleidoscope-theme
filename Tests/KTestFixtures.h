@@ -215,6 +215,44 @@ static inline NSData *KMakeAppleDouble(NSData *fork, const char *type,
   return d;
 }
 
+/* Wraps a resource fork in a MacBinary II file with the given Finder type and
+ * no data fork. unar takes it as an archive of one file, which is how a test
+ * can hand the store an archive without building a StuffIt one. The header CRC
+ * is filled in because unar will not recognise the format without it. */
+static inline NSData *KMakeMacBinary(NSData *fork, const char *name,
+                                     const char *type, const char *creator)
+{
+  NSMutableData *d = [NSMutableData dataWithLength: 128];
+  uint8_t *h = [d mutableBytes];
+  size_t nameLength = strlen(name);
+  uint16_t crc = 0;
+  NSUInteger i;
+  int bit;
+
+  h[1] = (uint8_t)nameLength;
+  memcpy(h + 2, name, nameLength);
+  memcpy(h + 65, type, 4);
+  memcpy(h + 69, creator, 4);
+  h[87] = (uint8_t)([fork length] >> 24);
+  h[88] = (uint8_t)([fork length] >> 16);
+  h[89] = (uint8_t)([fork length] >> 8);
+  h[90] = (uint8_t)[fork length];
+  h[122] = 129;                        /* written by MacBinary II */
+  h[123] = 129;                        /* readable by MacBinary II */
+  for (i = 0; i < 124; i++)            /* CRC-16/XMODEM */
+    {
+      crc ^= (uint16_t)(h[i] << 8);
+      for (bit = 0; bit < 8; bit++)
+        crc = (crc & 0x8000) ? (uint16_t)((crc << 1) ^ 0x1021)
+                             : (uint16_t)(crc << 1);
+    }
+  h[124] = (uint8_t)(crc >> 8);
+  h[125] = (uint8_t)crc;
+  [d appendData: fork];
+  [d increaseLengthBy: (128 - [fork length] % 128) % 128];
+  return d;
+}
+
 /* A 16x16 'ics8': raw indices into the Macintosh system palette, no header.
  * Fills the whole icon with one index except the top left pixel, which takes
  * the second, so a test can tell the two apart. */

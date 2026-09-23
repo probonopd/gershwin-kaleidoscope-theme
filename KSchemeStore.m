@@ -6,6 +6,7 @@
 
 #import "KSchemeStore.h"
 #import "KScheme.h"
+#import "KResourceFork.h"
 
 NSString * const KSelectedSchemeDefault = @"KaleidoscopeScheme";
 NSString * const KSchemeLibraryDidChangeNotification
@@ -15,6 +16,27 @@ NSString * const KSchemeLibraryDidChangeNotification
  * are StuffIt archives from the 1990s and nothing else on the system opens
  * them. */
 static NSString * const KUnarPath = @"/System/Library/Tools/unar";
+
+/* Finder type of an application. */
+#define K_APPLICATION_TYPE 0x4150504C         /* 'APPL' */
+/* Installer VISE packages carry creators 'VIS2', 'VIS3' and so on; the first
+ * three characters identify the family. */
+#define K_VISE_CREATOR_PREFIX 0x564953        /* 'VIS' */
+
+/* The lower case words of a name: file names and Garden titles punctuate and
+ * space the same scheme differently ("Planets - Venus", "Venus"). */
+static NSArray *KWords(NSString *name)
+{
+  NSMutableArray *words = [NSMutableArray array];
+  NSEnumerator *e = [[[name lowercaseString] componentsSeparatedByCharactersInSet:
+    [[NSCharacterSet alphanumericCharacterSet] invertedSet]] objectEnumerator];
+  NSString *word;
+
+  while ((word = [e nextObject]) != nil)
+    if ([word length] > 0)
+      [words addObject: word];
+  return words;
+}
 
 static NSError *KError(NSInteger code, NSString *message)
 {
@@ -107,6 +129,7 @@ static NSError *KError(NSInteger code, NSString *message)
       (unsigned long)[[NSDate date] timeIntervalSince1970]]];
   NSTask *task;
   NSMutableArray *installed = [NSMutableArray array];
+  KResourceFork *installer = nil;
   NSDirectoryEnumerator *walk;
   NSString *relative;
 
@@ -158,7 +181,17 @@ static NSError *KError(NSInteger code, NSString *message)
       NSString *destination;
 
       if (![KScheme isSchemeAtPath: full])
-        continue;
+        {
+          /* Remembered so that an archive with no scheme in it can say what it
+           * held instead: some authors shipped their scheme inside an
+           * installer application rather than as a file. */
+          KResourceFork *other = [KResourceFork forkWithContentsOfFile: full];
+
+          if (other != nil && [other fileType] == K_APPLICATION_TYPE
+              && installer == nil)
+            installer = other;
+          continue;
+        }
       destination = [[self schemeDirectory]
         stringByAppendingPathComponent: [relative lastPathComponent]];
       // A scheme of that name is replaced: re-downloading a scheme should
@@ -172,13 +205,56 @@ static NSError *KError(NSInteger code, NSString *message)
 
   if ([installed count] == 0)
     {
-      if (error != NULL)
+      if (error == NULL)
+        return nil;
+      /* Installer VISE packages are applications whose payload is compressed
+       * in MindVision's own format, which nothing here can open. Saying so is
+       * more use than claiming the download held nothing. */
+      if (installer != nil
+          && ([installer fileCreator] >> 8) == K_VISE_CREATOR_PREFIX)
+        *error = KError(7, @"This scheme is packaged as an Installer VISE"
+                        @" application, which cannot be unpacked here.");
+      else if (installer != nil)
+        *error = KError(7, @"This scheme is packaged inside an installer"
+                        @" application, which cannot be run here.");
+      else
         *error = KError(5, @"The archive holds no Kaleidoscope scheme.");
       return nil;
     }
   [[NSNotificationCenter defaultCenter]
     postNotificationName: KSchemeLibraryDidChangeNotification object: self];
   return installed;
+}
+
+- (NSString *)fileNameForSchemeTitled:(NSString *)title
+                        amongFileNames:(NSArray *)fileNames
+{
+  NSArray *wanted = KWords(title);
+  NSString *found = nil;
+  NSEnumerator *e;
+  NSString *fileName;
+
+  if ([fileNames count] == 1)
+    return [fileNames objectAtIndex: 0];
+  if ([wanted count] == 0)
+    return nil;
+  e = [fileNames objectEnumerator];
+  while ((fileName = [e nextObject]) != nil)
+    {
+      NSArray *words = KWords([fileName stringByDeletingPathExtension]);
+      NSUInteger i;
+      BOOL matches = NO;
+
+      for (i = 0; !matches && i + [wanted count] <= [words count]; i++)
+        matches = [[words subarrayWithRange:
+                     NSMakeRange(i, [wanted count])] isEqualToArray: wanted];
+      if (!matches)
+        continue;
+      if (found != nil)
+        return nil;
+      found = fileName;
+    }
+  return found;
 }
 
 - (BOOL)removeSchemeWithFileName:(NSString *)fileName error:(NSError **)error
