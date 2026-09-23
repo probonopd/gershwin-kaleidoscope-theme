@@ -30,6 +30,16 @@
   return self;
 }
 
+/* GNUstep treats every command line argument that is not an option as a
+ * document to open when the run loop starts, and puts up an error for any the
+ * delegate does not claim - with no message, since there was no real error.
+ * The pane path is the argument, so it is claimed here. */
+- (BOOL)application:(NSApplication *)app openFile:(NSString *)filename
+{
+  return [[filename stringByStandardizingPath]
+           isEqualToString: [_path stringByStandardizingPath]];
+}
+
 - (void)applicationDidFinishLaunching:(NSNotification *)note
 {
   NSBundle *bundle = [NSBundle bundleWithPath: _path];
@@ -89,8 +99,7 @@ int main(int argc, const char **argv)
   host = [[PaneHost alloc]
     initWithPanePath: [NSString stringWithUTF8String: argv[1]]];
   [NSApp setDelegate: host];
-  // Not NSApplicationMain: it takes the pane path on the command line for a
-  // file to open, fails, and puts up an empty alert in front of the pane.
+  // A menu, so the host can be quit like any other application.
   {
     NSMenu *menu = AUTORELEASE([[NSMenu alloc] initWithTitle: @"panehost"]);
 
