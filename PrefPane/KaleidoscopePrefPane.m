@@ -27,6 +27,7 @@
 - (void)pickScheme:(id)sender;
 - (void)finishDownload;
 - (void)setStatus:(NSString *)text;
+- (void)showNow;
 - (void)loadVisiblePictures;
 - (void)loadNextPicture:(NSTimer *)timer;
 - (NSRange)visibleSchemeRange;
@@ -174,7 +175,7 @@
   _busy = YES;
   [_refreshButton setEnabled: NO];
   [self setStatus: @"Asking macthemes.garden..."];
-  [[_refreshButton window] displayIfNeeded];
+  [self showNow];
 
   schemes = [[KGarden sharedGarden] recentSchemesWithError: &error];
   _busy = NO;
@@ -358,7 +359,7 @@
     [theme title]]];
   [_progress setDoubleValue: 0.0];
   [_progress setHidden: NO];
-  [[_previews window] displayIfNeeded];
+  [self showNow];
 
   archive = [[KGarden sharedGarden]
     downloadArchiveForSchemePage: [theme pageURL]
@@ -385,7 +386,7 @@
           [_progress setDoubleValue: fraction];
         }
       [_progress setNeedsDisplay: YES];
-      [[_progress window] displayIfNeeded];
+      [self showNow];
     }
                            error: &error];
   if (archive == nil)
@@ -401,7 +402,7 @@
     [theme title]]];
   [_progress setIndeterminate: YES];
   [_progress startAnimation: self];
-  [[_previews window] displayIfNeeded];
+  [self showNow];
 
   added = [[KSchemeStore sharedStore] installSchemesFromArchive: archive
                                                           error: &error];
@@ -455,10 +456,35 @@
   _busy = NO;
 }
 
+/* Puts what has changed on the screen now, rather than when control next
+ * returns to the event loop.
+ *
+ * Refreshing, downloading and unpacking all run inside an action method, and
+ * GNUstep only draws a window and flushes it to the display server from the
+ * event loop. Asking for the drawing alone was not enough: -displayIfNeeded
+ * draws into the window's backing store, which then sat there unflushed, so the
+ * progress bar appeared empty for the whole download and the status line never
+ * changed until the work was over. */
+- (void)showNow
+{
+  NSWindow *window = [[self mainView] window];
+
+  /* Before the pane is in a window there is nothing on screen to update - and
+   * the status line is first set from -initWithBundle:, before that. The
+   * current graphics context has no display behind it at that point, and
+   * flushing it crashed in XFlush, so the flush goes through the window's own
+   * context and only once there is a window. */
+  if (window == nil)
+    return;
+  [window displayIfNeeded];
+  [window flushWindow];
+  [[window graphicsContext] flushGraphics];
+}
+
 - (void)setStatus:(NSString *)text
 {
   [_status setStringValue: text ?: @""];
-  [[_status window] displayIfNeeded];
+  [self showNow];
 }
 
 @end
