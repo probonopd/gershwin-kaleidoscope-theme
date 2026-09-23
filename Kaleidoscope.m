@@ -560,6 +560,78 @@ static void KExtremes(NSImage *image, NSColor **lightest, NSColor **darkest)
     }
 }
 
+#pragma mark - Progress indicators
+
+- (void)drawProgressIndicator:(NSProgressIndicator *)progress
+                   withBounds:(NSRect)bounds
+                     withClip:(NSRect)rect
+                      atCount:(int)count
+                     forValue:(double)val
+{
+  NSImage *trough = [_scheme imageForPart: KPartProgressEmpty];
+  NSImage *fill = [_scheme imageForPart: KPartProgressFilled];
+  BOOL vertical = [progress isVertical];
+  CGFloat length = vertical ? NSHeight(bounds) : NSWidth(bounds);
+  CGFloat inset;
+  NSRect shown;
+
+  // Spinners and schemes without bar art have nothing of the scheme to show.
+  if ([progress style] == NSProgressIndicatorSpinningStyle
+      || trough == nil || fill == nil)
+    {
+      [super drawProgressIndicator: progress
+                        withBounds: bounds
+                          withClip: rect
+                           atCount: count
+                          forValue: val];
+      return;
+    }
+
+  // The art is one short bar whose rounded ends must not be stretched.
+  inset = floor((vertical ? [trough size].height : [trough size].width) / 3.0);
+  KDrawStretched(trough, bounds, vertical, inset);
+
+  shown = bounds;
+  if ([progress isIndeterminate])
+    {
+      // No part in the format is a barber pole, so a quarter-length run of the
+      // fill travels along the trough to show that work is going on. It starts
+      // at the leading end, so a bar whose owner blocks the animation timer
+      // still shows some fill rather than an empty trough.
+      CGFloat run = floor(length / 4.0);
+      CGFloat offset = fmod(count * run / 8.0, length);
+
+      if (vertical)
+        {
+          shown.origin.y += offset;
+          shown.size.height = run;
+        }
+      else
+        {
+          shown.origin.x += offset;
+          shown.size.width = run;
+        }
+    }
+  else if (vertical)
+    {
+      shown.size.height = round(length * val);
+      if ([progress isFlipped])
+        shown.origin.y = NSMaxY(bounds) - NSHeight(shown);
+    }
+  else
+    shown.size.width = round(length * val);
+
+  // The fill is drawn over the whole bar and clipped, so that a partial fill
+  // keeps the art's own leading end instead of a squeezed copy of it.
+  shown = NSIntersectionRect(NSIntersectionRect(shown, bounds), rect);
+  if (NSIsEmptyRect(shown))
+    return;
+  [NSGraphicsContext saveGraphicsState];
+  NSRectClip(shown);
+  KDrawStretched(fill, bounds, vertical, inset);
+  [NSGraphicsContext restoreGraphicsState];
+}
+
 #pragma mark - Pop-up buttons
 
 - (void)drawPopUpButtonCellInteriorWithFrame:(NSRect)cellFrame
